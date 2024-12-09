@@ -10,7 +10,10 @@ test_data = """7 6 4 2 1
 5 1 2 3 4
 1 5 4 3 2
 10 5 4 3 2
-5 10 12 13 14"""
+5 10 12 13 14
+10 12 13 14 20
+20 18 16 14 8
+6 1 7 8 9 10"""
 
 min_safe_step = 1
 max_safe_step = 3
@@ -20,65 +23,52 @@ def sign(x):
 
 def part1(test_data):
     reports = [[int(level) for level in report.split()] for report in test_data.split("\n")]
-    safe_reports = [check_safe2(report) for report in reports]
+    safe_reports = [check_safe(report) for report in reports]
     print(f"P1: {safe_reports.count(True)}")
+    safe_reports_with_dampener = [check_safe_with_dampener(report) for report in reports]
+    print(f"P2: {safe_reports_with_dampener.count(True)}")
 
-def is_level_difference_unsafe(diff):
-    return abs(diff) > max_safe_step or abs(diff) < min_safe_step
 
-def is_level_direction_unsafe(diff, dir):
-    diff_dir = sign(diff)
-    return diff_dir != dir
-
-def check_safe2(report):
-    # check peak
-    dirs = [sign(report[i] - report[i - 1]) for i in range(1, len(report))]
-    ignore_idx = None
-    count_neg = dirs.count(-1.0)
-    count_pos = dirs.count(1.0)
-    if count_neg == count_pos:
-        return False
-    elif count_neg > count_pos:
-        if count_pos > 2:
+def check_safe(report):
+    dirs = []
+    for i in range(1,len(report)):
+        diff = report[i] - report[i-1]
+        dir = sign(diff)
+        if abs(diff) < min_safe_step or abs(diff) > max_safe_step:
             return False
-        for i, dir in enumerate(dirs):
-            if dir == 1.0:
-                if i == len(dirs):
-                    ignore_idx = i + 1
-                else:
-                    ignore_idx = i
-    else:
-        if count_neg > 2:
+        if len(dirs) > 0 and dir != dirs[-1]:
             return False
-        for i, dir in enumerate(dirs):
-            if dir == -1.0:
-                if i == len(dirs):
-                    ignore_idx = i + 1
-                else:
-                    ignore_idx = i
-    
-    if ignore_idx != None:
-        report = report[0 : ignore_idx] + report[ignore_idx + 1 : len(report)]
+        dirs.append(dir)
+    return True
 
-    dampener = False if ignore_idx else True
-    ignore_idx = None
-    for i in range(1, len(report)):
-        past_index = i - 1
-        if ignore_idx and past_index == ignore_idx:
-            past_index = i - 2
-        diff = abs(report[i] - report[past_index])
-        if diff < min_safe_step or diff > max_safe_step:
-            if dampener:
-                dampener = False
-                ignore_idx = i
+def check_safe_with_dampener(report):
+    dampener_unused = True
+    steps = [report[i] - report[i-1] for i in range(1, len(report))]
+    directions = [sign(report[i] - report[i-1]) for i in range(1, len(report))]
+    general_direction = sign(sum(directions))
+    for i, step, direction in zip(range(1, len(report)), steps, directions):
+        if direction != general_direction:
+            if dampener_unused:
+                dampener_unused = False
                 continue
-            return False
+            else:
+                return False
+
+        if abs(step) < min_safe_step or abs(step) > max_safe_step:
+            if dampener_unused:
+                dampener_unused = False
+                if i == 1:
+                    continue
+                elif i != len(steps):
+                    new_step = steps[i] + step
+                    if abs(new_step) < min_safe_step or abs(new_step) > max_safe_step:
+                        return False
+            else:
+                return False
     return True
 
 
 def main():
-    with open("Day 2/input.txt") as test_file:
-        test_data = test_file.read()
         part1(test_data)
 
 if __name__ == "__main__":
